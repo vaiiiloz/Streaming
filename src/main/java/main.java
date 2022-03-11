@@ -1,34 +1,36 @@
-import java.util.ArrayList;
-import java.util.Properties;
-
-import Mongo.MongoHandler;
+import Thread.AIServiceManager;
 import config.AppfileConfig;
 import config.SpringContext;
-import entity.BBox;
-import entity.PeopleBox;
 import org.bytedeco.javacpp.Loader;
-import org.bytedeco.opencv.opencv_face.FacemarkLBF;
 import org.bytedeco.opencv.opencv_java;
-import org.apache.log4j.BasicConfigurator;
 import org.springframework.boot.SpringApplication;
-import Thread.AIServiceManager;
+
+import java.util.Properties;
 
 public class main {
 
     private static Properties properties;
     public static void main(final String[] args){
         Loader.load(opencv_java.class);
-        BasicConfigurator.configure();
-//        SpringContext springContext = new SpringContext();
-//        springContext.setApplicationContext(SpringApplication.run(AppfileConfig.class,args));
+//        BasicConfigurator.configure();
+        SpringContext springContext = new SpringContext();
+        springContext.setApplicationContext(SpringApplication.run(AppfileConfig.class,args));
 
 
-        MongoHandler mongoHandler = new MongoHandler("mongodb://localhost:27017", "Camera");
-        mongoHandler.connectMongoDB();
 
-        mongoHandler.addPeople(new PeopleBox("A",1,1,new ArrayList<BBox>()));
-//        AIServiceManager aiServiceManager = new AIServiceManager();
-//        aiServiceManager.startAll();
+        AIServiceManager aiServiceManager = new AIServiceManager();
+        aiServiceManager.startAll();
+
+
+        //get boxes from mongodb
+//        MongoHandler mongoHandler = new MongoHandler("mongodb://localhost:27017", "Camera");
+//        List<PeopleBox> boxes = mongoHandler.getBoxes();
+//
+//        //draw box to image
+//        System.out.println(boxes.size());
+//        boxes.forEach(e->{
+//            System.out.println(e.toString());
+//        });
 
 
 

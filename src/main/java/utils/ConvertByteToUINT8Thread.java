@@ -45,11 +45,28 @@ public class ConvertByteToUINT8Thread implements Runnable{
             for (int i=0;i<ba.length;i++){
                 intArray[i] = ba[i] & 0xFF;
             }
+            try{
+                listInputSize.add(intArray.length);
+                listInputData.add(new TritonInputData(deviceId, intArray.clone()));
+            }catch (Exception e){
+                try{
+                    listInputSize.add( listInputSize.size(),intArray.length);
+                    listInputData.add( listInputData.size(),new TritonInputData(deviceId, intArray.clone()));
+                }catch (Exception ee){
+                    e.printStackTrace();
+                    System.out.println("Still fail");
+                }
 
-            listInputSize.add(intArray.length);
-            listInputData.add(new TritonInputData(deviceId, intArray.clone()));
+//                System.out.println("intArray is "+(intArray == null));
+//                System.out.println("intArray length"+intArray.length);
+
+            }
+
+
+//            Thread.sleep(1);
             countDownLatch.countDown();
-        } catch (IOException e) {
+        } catch (Exception e) {
+
             e.printStackTrace();
         }
 

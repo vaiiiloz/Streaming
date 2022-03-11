@@ -3,26 +3,28 @@ package Thread;
 import Mongo.MongoHandler;
 import config.AppfileConfig;
 import config.SpringContext;
-import org.bytedeco.javacv.Frame;
-import org.bytedeco.javacv.OpenCVFrameConverter;
-import org.bytedeco.opencv.global.opencv_imgcodecs;
-
 import entity.BBox;
 import entity.PeopleBox;
+import org.bytedeco.javacv.Frame;
+import org.bytedeco.javacv.OpenCVFrameConverter;
 import org.opencv.core.Mat;
-import utils.Renderer;
+import org.opencv.imgcodecs.Imgcodecs;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.text.SimpleDateFormat;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class RtspStreamThread implements Runnable{
+public class RtspStreamThread implements Runnable {
 
     private final int UIBufferSize;
     private float scaleX;
@@ -49,7 +51,11 @@ public class RtspStreamThread implements Runnable{
     private HashMap<Integer, BlockingBuffer> bufferTrackBox;
     private List lastListFaceBox;
     private Boolean isSmartRecord;
-    private MongoHandler mongoHandler;;
+    private MongoHandler mongoHandler;
+    ;
+
+    private VideoRecordThread videoRecordThread;
+    private Boolean isRecord = false;
     AppfileConfig appfileConfig;
 //
 
@@ -86,7 +92,7 @@ public class RtspStreamThread implements Runnable{
         this.running = running;
     }
 
-    public RtspStreamThread(Boolean isStreaming,String devicename, int preview_width, int preview_height, int UIBufferSize, MongoHandler mongoHandler){
+    public RtspStreamThread(Boolean isStreaming, String devicename, int preview_width, int preview_height, int UIBufferSize, MongoHandler mongoHandler) {
         mFrameBuffer = new BlockingBuffer(UIBufferSize);
         mFaceBuffer = new BlockingBuffer(4);
         listFaceBox = new ArrayList<>();
@@ -95,72 +101,75 @@ public class RtspStreamThread implements Runnable{
         this.isStreaming = isStreaming;
 
         this.devicename = devicename;
+        this.videoRecordThread = new VideoRecordThread(devicename);
 
         this.preview_height = preview_height;
         this.preview_width = preview_width;
         this.UIBufferSize = UIBufferSize;
         this.lastListFaceBox = new ArrayList<>();
         this.isSmartRecord = isSmartRecord;
-        appfileConfig = SpringContext.context.getBean("appfileConfig",AppfileConfig.class);
+        appfileConfig = SpringContext.context.getBean("appfileConfig", AppfileConfig.class);
+//        this.isRecord = appfileConfig.isRecord;
 
 
     }
 
-    public void pushFrame(Frame framemat){
+    public void pushFrame(Frame framemat) {
         try {
             mFrameBuffer.push(framemat);
-        }catch (InterruptedException e){
+        } catch (InterruptedException e) {
             e.printStackTrace();
         }
     }
 
-    public void pushBox(BBox bbox){
+    public void pushBox(BBox bbox) {
         try {
             mFaceBuffer.push(bbox);
-        }catch (InterruptedException e){
+        } catch (InterruptedException e) {
             e.printStackTrace();
         }
     }
 
     @Override
     public void run() {
-        if (!initName){
-            Thread.currentThread().setName(Thread.currentThread().getName().replace("##", this.getClass().getSimpleName()+"-"+devicename));
+        if (!initName) {
+            Thread.currentThread().setName(Thread.currentThread().getName().replace("##", this.getClass().getSimpleName() + "-" + devicename));
             initName = true;
         }
+//        videoRecordThread.startRecordVideo();
         //output ffmepeg erro
         //File ffmpeg_err = new File("ffmpeg_err.log");
         //processBuilder.redirectError(ffmpeg_err);
-        try{
+        try {
 //            process = processBuilder.start();
-            while (running){
+            while (running) {
                 Streaming();
 
-                Thread.sleep(appfileConfig.waittime*60*1000);
+                Thread.sleep(10);
 
             }
-        }catch(InterruptedException e){
+        } catch (InterruptedException e) {
             e.printStackTrace();
         }
     }
 
-    public void Streaming(){
+    public void Streaming() {
 
-        if (mFrameBuffer.size()>0){
-            try{
+        if (mFrameBuffer.size() > 0) {
+            try {
 
                 Frame frameMatUI = mFrameBuffer.pop();
 
                 Mat imgMat = new Mat();
 
-                BufferedImage heatmap = new BufferedImage(preview_width,preview_height,6);
+                BufferedImage heatmap = new BufferedImage(preview_width, preview_height, 6);
 
 
                 if (frameMatUI.image == null) {
                     return;
                 }
 
-                if (mFaceBuffer.size()>0){
+                if (mFaceBuffer.size() > 0) {
 
                     PeopleBox faces = mFaceBuffer.pop();
 
@@ -169,52 +178,63 @@ public class RtspStreamThread implements Runnable{
 
                     listFaceBox = faces.getbBoxes();
 
-                    if (listFaceBox.size()>0){
+                    if (listFaceBox.size() > 0) {
 
-                        switch (appfileConfig.modelType){
-                            case "scrfd":{
-                                imgMat = Renderer.renderAllBox(frameMatUI,listFaceBox);
-                                break;
-                            }
-                            case "rapid":{
-                                imgMat = Renderer.renderALLPolygon(frameMatUI,listFaceBox);
-                                break;
-                            }
-                        }
+//                        switch (appfileConfig.modelType){
+//                            case "scrfd":{
+//                                imgMat = Renderer.renderAllBox(frameMatUI,listFaceBox);
+//                                break;
+//                            }
+//                            case "rapid":{
+//                                imgMat = Renderer.renderALLPolygon(frameMatUI,listFaceBox);
+//                                break;
+//                            }
+//                        }
 
-                        heatmap = Renderer.renderHeatMap(frameMatUI, listFaceBox);
-
-                        String directoryName = String.format("%s/%s",appfileConfig.output_folder,devicename);
-
-
-
-                        int idx = new File(directoryName).list().length;
 
                         lastListFaceBox = listFaceBox;
-                    }else{
+
+                    } else {
                         lastListFaceBox.clear();
                     }
 //                    System.out.println(listFaceBox.size());
-                    StreamingOutMongo(faces);
-                }else{
-                    switch (appfileConfig.modelType){
-                        case "scrfd":{
-                            imgMat = Renderer.renderAllBox(frameMatUI,lastListFaceBox);
-                            break;
-                        }
-                        case "rapid":{
-                            imgMat = Renderer.renderALLPolygon(frameMatUI,lastListFaceBox);
-                            break;
-                        }
+                    //timer for mongodb
+
+                    if (resetTimer) {
+                        startTimer = System.currentTimeMillis();
+                        resetTimer = false;
                     }
-                    heatmap = Renderer.renderHeatMap(frameMatUI, lastListFaceBox);
+                    long duration = System.currentTimeMillis() - startTimer;
+
+                    if (duration >= appfileConfig.waittime * 1000) {
+                        resetTimer = true;
+                        StreamingOutMongo(faces);
+//                        StreamingOut(frameMatUI);
+
+                    }
+//                    listFaceBox.clear();
+
+                } else {
+//                    switch (appfileConfig.modelType){
+//                        case "scrfd":{
+//                            imgMat = Renderer.renderAllBox(frameMatUI,lastListFaceBox);
+//                            break;
+//                        }
+//                        case "rapid":{
+//                            imgMat = Renderer.renderALLPolygon(frameMatUI,lastListFaceBox);
+//                            break;
+//                        }
+//                    }
                 }
 
-                if (imgMat.empty()){
+                if (imgMat.empty()) {
                     return;
                 }
+
+                if (isRecord) {
+                    HandelVideo(frameMatUI);
+                }
 //                StreamingOut(imgMat);
-                StreamingOutHeatMap(heatmap);
                 imgMat.release();
                 frameMatUI.close();
             } catch (InterruptedException e) {
@@ -227,42 +247,52 @@ public class RtspStreamThread implements Runnable{
 
     }
 
-    public void StreamingOutMongo(PeopleBox peopleBox){
+    public void HandelVideo(Frame frame) {
+        if (videoRecordThread.ismIsRecording()) {
+            videoRecordThread.pushRecordDate(frame.clone());
+        }
+    }
+
+    public void StreamingOutMongo(PeopleBox peopleBox) throws InterruptedException {
+
+//        mongoHandler.addPeople(peopleBox, videoRecordThread.getRecorder().getFrameNumber()+1);
         mongoHandler.addPeople(peopleBox);
     }
 
 
+    public void StreamingOut(Frame frame) {
+        if (isStreaming) {
 
-    public void StreamingOut(Mat mat){
-        if (isStreaming){
+            OpenCVFrameConverter.ToMat convToMat = new OpenCVFrameConverter.ToMat();
+            OpenCVFrameConverter.ToMat converter1 = new OpenCVFrameConverter.ToMat();
+            OpenCVFrameConverter.ToOrgOpenCvCoreMat converter2 = new OpenCVFrameConverter.ToOrgOpenCvCoreMat();
+            org.bytedeco.opencv.opencv_core.Mat mat = convToMat.convert(frame.clone());
+            Mat imgMat = converter2.convert(converter1.convert(mat.clone()));
 
-            Mat imgMat= mat.clone();
-
-            String directoryName = String.format("%s/%s",appfileConfig.output_folder,devicename);
-
+            String directoryName = String.format("%s/%s", appfileConfig.output_folder, devicename);
 
 
             int idx = new File(directoryName).list().length;
 //                OutputStream stdin = new FileOutputStream(new File(String.format("%s/%s/%d.jpg", appfileConfig.output_folder, devicename, idx)));
-//            opencv_imgcodecs.imwrite(String.format("%s/%s/%d.jpg", appfileConfig.output_folder, devicename, idx),imgMat);
+            Imgcodecs.imwrite(String.format("%s/%s/%s.jpg", appfileConfig.output_folder, devicename, idx), imgMat);
 
         }
 
     }
 
-    public void StreamingOutHeatMap(BufferedImage heatmap){
-        if (isStreaming){
-            if (heatmap == null){
+    public void StreamingOutHeatMap(BufferedImage heatmap) {
+        if (isStreaming) {
+            if (heatmap == null) {
                 return;
             }
-            String directoryName = String.format("%s/%s",appfileConfig.output_folder,devicename);
-
+            String directoryName = String.format("%s/%s", appfileConfig.output_folder, devicename);
 
 
             int idx = new File(directoryName).list().length;
 
             try {
-                ImageIO.write(heatmap, "jpg", new File(String.format("%s/%s/%d.jpg", appfileConfig.output_folder, devicename, idx)));
+//                ImageIO.write(heatmap, "jpg", new File(String.format("%s/%s/%d.jpg", appfileConfig.output_folder, devicename, idx)));
+                ImageIO.write(heatmap, "jpg", new File(String.format("%s/%s/%s.jpg", appfileConfig.output_folder, devicename, new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(new Date()))));
             } catch (IOException e) {
                 e.printStackTrace();
             }

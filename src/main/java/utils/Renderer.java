@@ -37,7 +37,7 @@ public class Renderer {
         org.opencv.core.Scalar color = new org.opencv.core.Scalar(30,255,255,0);
 
         for (BBox box:bboxes){
-            Rect rect = new Rect(box.getX1(), box.getY1(),box.getW(), box.getH());
+            Rect rect = new Rect(box.getX(), box.getY(),box.getW(), box.getH());
             Imgproc.rectangle(imgMat,rect,color,4,1,0);
         }
 //        convToMat.close();
@@ -45,29 +45,6 @@ public class Renderer {
 
     }
 
-    public static BufferedImage renderHeatMap(Frame frame, List boxes){
-        try{
-            OpenCVFrameConverter.ToMat convToMat = new OpenCVFrameConverter.ToMat();
-            OpenCVFrameConverter.ToMat converter1 = new OpenCVFrameConverter.ToMat();
-            OpenCVFrameConverter.ToOrgOpenCvCoreMat converter2 = new OpenCVFrameConverter.ToOrgOpenCvCoreMat();
-            org.bytedeco.opencv.opencv_core.Mat mat = convToMat.convert(frame.clone());
-            Mat imgMat = converter2.convert(converter1.convert(mat));
-
-            MatOfByte matOfByte = new MatOfByte();
-            Imgcodecs.imencode(".jpg", imgMat,matOfByte);
-            byte[] bytes = matOfByte.toArray();
-            InputStream in = new ByteArrayInputStream(bytes);
-            BufferedImage img = ImageIO.read(in);
-
-            HeatMap heatMap = new HeatMap(img);
-            return heatMap.createHeatMap(appfileConfig.multiplier, boxes);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return new BufferedImage(appfileConfig.preview_width, appfileConfig.preview_height, 0);
-
-    }
 
     public static Mat renderALLPolygon(Frame frame, List<Polygon> polygonList){
         OpenCVFrameConverter.ToMat convToMat = new OpenCVFrameConverter.ToMat();

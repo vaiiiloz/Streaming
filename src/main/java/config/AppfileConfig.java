@@ -1,6 +1,5 @@
 package config;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.PropertySource;
@@ -71,8 +70,11 @@ public class AppfileConfig {
     @Value("${waittime}")
     public int waittime;
 
-    @Value("${mongoClientUri}")
-    public String mongoClientUri;
+    @Value("${mongoAddress}")
+    public String mongoAddress;
+
+    @Value("${mongoPort}")
+    public int mongoPort;
 
     @Value("${database}")
     public String database;
@@ -80,5 +82,16 @@ public class AppfileConfig {
     @Value("${modelType}")
     public String modelType;
 
+    @Value("${mongouser}")
+    public String mongouser;
+
+    @Value("${pass}")
+    public String pass;
+
+//    @Value("${isRecord}")
+//    public boolean isRecord;
+
+//    @Value("${isSave}")
+//    public boolean isSave;
 
 }

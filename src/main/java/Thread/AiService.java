@@ -4,7 +4,7 @@ import Mongo.MongoHandler;
 
 import java.util.concurrent.ExecutorService;
 
-public class AiService{
+public class AiService {
     private RtspStreamThread rtspStreamThread;
     private RtspCaptureThread rtspCaptureThread;
     private String rtsp;
@@ -22,16 +22,16 @@ public class AiService{
         this.frameRate = frameRate;
         this.deviceId = deviceId;
         rtspStreamThread = new RtspStreamThread(isStreaming, deviceId, preview_width, preview_height, UIBufferSize, mongoHandler);
-        rtspCaptureThread = new RtspCaptureThread(rtspStreamThread, rtsp, preview_width, preview_height,frameRate, deviceId);
+        rtspCaptureThread = new RtspCaptureThread(rtspStreamThread, rtsp, preview_width, preview_height, frameRate, deviceId);
 
     }
 
-    public void startAll(ExecutorService executorService){
+    public void startAll(ExecutorService executorService) {
         executorService.execute(rtspStreamThread);
         executorService.execute(rtspCaptureThread);
     }
 
-    public void stopAll(){
+    public void stopAll() {
         rtspCaptureThread.setRunning(false);
         rtspStreamThread.setRunning(false);
     }

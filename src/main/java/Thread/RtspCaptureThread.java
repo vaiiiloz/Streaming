@@ -2,13 +2,9 @@ package Thread;
 
 import org.bytedeco.ffmpeg.global.avcodec;
 import org.bytedeco.javacv.FFmpegFrameGrabber;
-import org.bytedeco.javacv.Frame;
 import org.bytedeco.javacv.OpenCVFrameConverter;
-import org.bytedeco.opencv.opencv_core.Mat;
-
 
 import static org.bytedeco.ffmpeg.global.avutil.AV_PIX_FMT_BGR24;
-import static org.bytedeco.ffmpeg.global.swscale.SWS_BICUBIC;
 
 public class RtspCaptureThread implements Runnable{
     private boolean running = true;
@@ -22,6 +18,7 @@ public class RtspCaptureThread implements Runnable{
     private FFmpegFrameGrabber streamGrabber;
     private Object lockStreamCapture = new Object();
     private BlockingBuffer mFrameBuffer;
+    private boolean isGPU = false;
     OpenCVFrameConverter.ToMat convToMat = new OpenCVFrameConverter.ToMat();
     OpenCVFrameConverter.ToMat converter1 = new OpenCVFrameConverter.ToMat();
     OpenCVFrameConverter.ToOrgOpenCvCoreMat converter2 = new OpenCVFrameConverter.ToOrgOpenCvCoreMat();
@@ -57,25 +54,31 @@ public class RtspCaptureThread implements Runnable{
 
             }
             streamGrabber = new FFmpegFrameGrabber(rtspInput);
-//            streamGrabber.setFormat("RTSP");
+            streamGrabber.setFormat("RTSP");
+            if(this.isGPU){
+                streamGrabber.setOption("hwaccel", "cuvid");
+                streamGrabber.setVideoCodecName("h264_cuvid");
+            }else{
+                streamGrabber.setVideoCodec(avcodec.AV_CODEC_ID_H264);
+            }
 
-            streamGrabber.setVideoCodec(avcodec.AV_CODEC_ID_H264);
-            streamGrabber.setOption("rtsp_transport","tcp");
-            streamGrabber.setOption("hwaccel","nvdec");
-            streamGrabber.setImageWidth(this.preview_width);
-            streamGrabber.setImageHeight(this.preview_height);
-            streamGrabber.setOption("tune","zerolatency");
-            streamGrabber.setOption("an","");
-            streamGrabber.setOption("sn","");
-            streamGrabber.setOption("dn","");
-            streamGrabber.setOption("fflags","nobuffer");
-            streamGrabber.setOption("flags","low_delay");
-            streamGrabber.setOption("avioflags","direct");
-            streamGrabber.setOption("framedrop","");
-            streamGrabber.setPixelFormat(AV_PIX_FMT_BGR24);
-            streamGrabber.setImageScalingFlags(SWS_BICUBIC);
-            streamGrabber.setOption("stimeout","1000000");
+            streamGrabber.setOption("rtsp_transport", "tcp");
+            streamGrabber.setOption("hwaccel", "nvdec");
+            streamGrabber.setImageWidth(preview_width);
+            streamGrabber.setImageHeight(preview_height);
+            streamGrabber.setOption("tune", "zerolatency");
+            streamGrabber.setOption("an", "");
+            streamGrabber.setOption("sn", "");
+            streamGrabber.setOption("dn", "");
+            streamGrabber.setOption("fflags", "nobuffer");
+            streamGrabber.setOption("flags", "low_delay");
+            streamGrabber.setOption("framedrop", "");
+            streamGrabber.setOption("avioflags", "direct");
             streamGrabber.setFrameRate(frameRate);
+            streamGrabber.setPixelFormat(AV_PIX_FMT_BGR24);// AV_PIX_FMT_RGBA);
+            // set timeout
+            streamGrabber.setOption("stimeout", "1000000");
+
         }
     }
 

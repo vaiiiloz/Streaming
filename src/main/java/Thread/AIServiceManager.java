@@ -6,15 +6,12 @@ import com.google.common.collect.Lists;
 import config.AppfileConfig;
 import config.SpringContext;
 import config.ThreadPoolFactory;
-import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import javax.swing.*;
 import java.io.File;
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -38,16 +35,17 @@ public class AIServiceManager {
     public AIServiceManager() {
 
         appfileConfig = SpringContext.context.getBean("appfileConfig",AppfileConfig.class);
-        mongoHandler = new MongoHandler(appfileConfig.mongoClientUri, appfileConfig.database);
+//        System.out.println(appfileConfig.mongouser);
+        mongoHandler = new MongoHandler(appfileConfig.mongouser, appfileConfig.pass, appfileConfig.database);
     }
 
     public void startAll(){
         threadPoolFactory = new ThreadPoolFactory(appfileConfig);
         HashMap<String, String> device = new HashMap<String, String>();
         device.put("deviceA", appfileConfig.rtsp);
-        device.put("deviceB", "rtsp://admin:12345678a@@192.168.0.242:554/fhd");
-//        device.put("deviceC", "rtsp://admin:12345678a@@192.168.0.247:554/fhd");
-//        device.put("deviceD", appfileConfig.rtsp);
+        device.put("deviceB", "rtsp://admin:12345678a@@192.168.0.3:8554/fhd");
+        device.put("deviceC", "rtsp://admin:12345678a@@192.168.0.62:8554/fhd");
+        device.put("deviceD", "rtsp://admin:12345678a@@192.168.0.247:554/fhd");
 
         device.entrySet().stream().forEach(d ->{
             String directoryName = String.format("%s/%s",appfileConfig.output_folder,d.getKey());

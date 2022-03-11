@@ -5,17 +5,18 @@ import com.mongodb.DBObject;
 import org.bson.Document;
 
 public class BBox {
-    private int x1;
-    private int y1;
+    private int x;
+    private int y;
     private int w;
     private int h;
     private double score;
 
     public BBox(int x1, int y1, int x2, int y2, double score) {
-        this.x1 = x1;
-        this.y1 = y1;
+
         this.w = Math.abs(x1-x2);
         this.h = Math.abs(y1-y2);
+        this.x = x1+this.w/2;
+        this.y = y1+this.h/2;
         this.score = score;
     }
 
@@ -28,39 +29,39 @@ public class BBox {
 //    }
 
     public DBObject toDBObject(){
-        return new BasicDBObject("x1",x1).append("y1",y1).append("w",w).append("h",h).append("score", score);
+        return new BasicDBObject("x1",x).append("y1",y).append("w",w).append("h",h).append("score", score);
     }
 
     public void converFromDBObject(BasicDBObject DBObject){
-        x1 = (int) DBObject.get("x1");
-        y1 = (int) DBObject.get("y1");
+        x = (int) DBObject.get("x");
+        y = (int) DBObject.get("y");
         w = (int) DBObject.get("w");
         h = (int) DBObject.get("h");
         score = (double) DBObject.get("score");
     }
 
     public void converFromDocument(Document DBObject){
-        x1 = (int) DBObject.get("x1");
-        y1 = (int) DBObject.get("y1");
+        x = (int) DBObject.get("x");
+        y = (int) DBObject.get("y");
         w = (int) DBObject.get("w");
         h = (int) DBObject.get("h");
         score = (double) DBObject.get("score");
     }
 
-    public int getX1() {
-        return x1;
+    public int getX() {
+        return x;
     }
 
-    public void setX1(int x1) {
-        this.x1 = x1;
+    public void setX(int x) {
+        this.x = x;
     }
 
-    public int getY1() {
-        return y1;
+    public int getY() {
+        return y;
     }
 
-    public void setY1(int y1) {
-        this.y1 = y1;
+    public void setY(int y1) {
+        this.y = y1;
     }
 
     public int getW() {
@@ -90,8 +91,8 @@ public class BBox {
     @Override
     public String toString() {
         return "BBox{" +
-                "x1=" + x1 +
-                ", y1=" + y1 +
+                "x=" + x +
+                ", y=" + y +
                 ", w=" + w +
                 ", h=" + h +
                 ", score=" + score +

@@ -17,25 +17,26 @@ public class ThreadPoolFactory {
     private String THREAD_PREFIX;
     private int FIXED_THREAD_NUM;
 
-    private class MThreadFactory implements ThreadFactory{
+    private class MThreadFactory implements ThreadFactory {
         private String poolName;
         private int threadCount = 0;
 
-        public MThreadFactory(String poolName){
+        public MThreadFactory(String poolName) {
             this.poolName = poolName;
         }
 
-        public Thread newThread(Runnable r){
-            return new Thread(r, THREAD_PREFIX+" ## "+" {pool:" +poolName
-            +", thread:" + (threadCount++) + "}");
+        public Thread newThread(Runnable r) {
+            return new Thread(r, THREAD_PREFIX + " ## " + " {pool:" + poolName
+                    + ", thread:" + (threadCount++) + "}");
         }
     }
 
     private ExecutorService cp = null;
     private ExecutorService fp = null;
+
     @Autowired
     public ThreadPoolFactory(AppfileConfig appfileConfig) {
-        THREAD_PREFIX = appfileConfig.applicationType ;
+        THREAD_PREFIX = appfileConfig.applicationType;
         FIXED_THREAD_NUM = appfileConfig.threadPoolFixedNum;
         cp = Executors.newCachedThreadPool(new MThreadFactory("cached"));
         fp = Executors.newFixedThreadPool(FIXED_THREAD_NUM, new MThreadFactory("fixed"));
@@ -43,7 +44,7 @@ public class ThreadPoolFactory {
     }
 
     @PreDestroy
-    public void shutdownThreadPool(){
+    public void shutdownThreadPool() {
         cp.shutdown();
         fp.shutdown();
 //        logger.info("Shutdown ThreadPoolFactory");
