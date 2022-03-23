@@ -9,6 +9,8 @@ import inference.GrpcService;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 import org.bytedeco.javacv.Frame;
 import utils.ConvertByteToUINT8Thread;
 
@@ -54,6 +56,7 @@ public class StreamMuxerDetectThread implements Runnable {
     private GRPCInferenceServiceGrpc.GRPCInferenceServiceBlockingStub blockingStub = null;
     private List<Frame> lsitFrames = new ArrayList<>();
     AppfileConfig appfileConfig;
+    private Logger LOGGER = LogManager.getLogger(StreamMuxerDetectThread.class);
 
     public StreamMuxerDetectThread(List<String> deviceIds, ConcurrentHashMap<String, AiService> allAIServiceMap) {
         this.deviceIds.addAll(deviceIds);
@@ -90,14 +93,14 @@ public class StreamMuxerDetectThread implements Runnable {
         GrpcService.ServerLiveRequest serverLiveRequest = GrpcService.ServerLiveRequest.getDefaultInstance();
         GrpcService.ServerLiveResponse serverLiveResponse = blockingStub.serverLive(serverLiveRequest);
         if (!serverLiveResponse.getLive()) {
-            System.out.println("Server is not live");
+            LOGGER.error("Server is not live");
             return false;
         }
         //check server ready status
         GrpcService.ServerReadyRequest serverReadyRequest = GrpcService.ServerReadyRequest.getDefaultInstance();
         GrpcService.ServerReadyResponse serverReadyResponse = blockingStub.serverReady(serverReadyRequest);
         if (!serverReadyResponse.getReady()) {
-            System.out.println("Server is not ready");
+            LOGGER.error("Server is not ready");
             return false;
         }
         //check model ready status
@@ -106,7 +109,7 @@ public class StreamMuxerDetectThread implements Runnable {
         GrpcService.ModelReadyRequest modelReadyRequest = modelReadyBuilder.build();
         GrpcService.ModelReadyResponse modelReadyResponse = blockingStub.modelReady(modelReadyRequest);
         if (!modelReadyResponse.getReady()) {
-            System.out.println("Model is not ready");
+            LOGGER.error("Model is not ready");
             return false;
         }
         //Get model info
@@ -120,7 +123,7 @@ public class StreamMuxerDetectThread implements Runnable {
                 GrpcService.ModelMetadataResponse modelMetadataResponse = blockingStub.modelMetadata(modelMetadataRequest);
 //                System.out.println(modelMetadataResponse.toString());
             } catch (Exception e) {
-                System.out.println("Wrong info");
+                LOGGER.error("Wrong info");
                 return false;
             }
         }
@@ -132,7 +135,7 @@ public class StreamMuxerDetectThread implements Runnable {
         try {
             GrpcService.ModelConfigResponse modelConfigResponse = blockingStub.modelConfig(modelConfigRequest);
         } catch (Exception e) {
-            System.out.println("Wrong config");
+            LOGGER.error("Wrong config");
             return false;
         }
         return true;
@@ -336,15 +339,7 @@ public class StreamMuxerDetectThread implements Runnable {
 
                     return tritonPostResult.stream().map(e -> new PeopleBox(e.getDeviceId(), now, e.getListBBoxes())).collect(Collectors.toList());
                 } catch (Exception e) {
-                    System.out.println(listInputData.size());
-                    System.out.println(listInputSize.size());
-                    listInputData.forEach(input -> {
-                        System.out.println("Id " + input.getDeviceId() + " leng " + input.getData().length);
-                    });
-                    images.forEach(image -> {
-                        System.out.println("Device ID: " + image.getKey() + " and Frame length " + (image.getValue().image == null));
-                    });
-                    System.out.println("Image length" + images.isEmpty() + " input data " + inputData.length);
+                    LOGGER.error("Triton Server is not available ");
                     e.printStackTrace();
                     return null;
                 }
