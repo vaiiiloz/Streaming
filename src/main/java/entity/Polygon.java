@@ -74,8 +74,6 @@ public class Polygon implements Entity{
         return (y+h/2);
     }
 
-
-
     public int getW() {
         return w;
     }
@@ -131,22 +129,6 @@ public class Polygon implements Entity{
     public void setLevel(int level) {
         this.level = level;
     }
-
-//    public int[] getX(){
-//        int[] x = new int[coords.size()];
-//        for (int i=0;i<coords.size();i++){
-//            x[i] = coords.get(i).getX();
-//        }
-//        return x;
-//    }
-//
-//    public int[] getY(){
-//        int[] y = new int[coords.size()];
-//        for (int i=0;i<coords.size();i++){
-//            y[i] = coords.get(i).getY();
-//        }
-//        return y;
-//    }
 
     @Override
     public String toString() {

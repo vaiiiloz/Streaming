@@ -1,7 +1,5 @@
 package Thread;
 
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
 import org.bytedeco.ffmpeg.global.avcodec;
 import org.bytedeco.javacv.FFmpegFrameGrabber;
 import org.bytedeco.javacv.OpenCVFrameConverter;
@@ -9,7 +7,7 @@ import org.bytedeco.javacv.OpenCVFrameConverter;
 import static org.bytedeco.ffmpeg.global.avutil.AV_PIX_FMT_BGR24;
 
 public class RtspCaptureThread implements Runnable{
-    private static final Logger LOGGER = LogManager.getLogger(RtspCaptureThread.class);
+//    private static final Logger LOGGER = LogManager.getLogger(RtspCaptureThread.class);
     private boolean running = true;
     private RtspStreamThread mUIThread;
     private String rtsp;
@@ -80,7 +78,7 @@ public class RtspCaptureThread implements Runnable{
             streamGrabber.setOption("an", "");
             streamGrabber.setOption("sn", "");
             streamGrabber.setOption("dn", "");
-            streamGrabber.setOption("fflags", "nobuffer");
+//            streamGrabber.setOption("fflags", "nobuffer");
             streamGrabber.setOption("flags", "low_delay");
             streamGrabber.setOption("framedrop", "");
             streamGrabber.setOption("avioflags", "direct");
@@ -123,7 +121,7 @@ public class RtspCaptureThread implements Runnable{
             try {
                 if ((frame=getStreamGrabber().grabImage())!=null){
 
-                    mUIThread.pushFrame(frame.clone());
+//                    mUIThread.pushFrame(frame.clone());
 
                     mFrameBuffer.push(frame.clone());
 
@@ -139,7 +137,7 @@ public class RtspCaptureThread implements Runnable{
                 if (start_missing_frame==0){ //start count missing cam time
                     start_missing_frame = System.currentTimeMillis();
                 }else if ((System.currentTimeMillis()-start_missing_frame) > (5*6000)){ //log error if miss cam more than 5 min
-                    LOGGER.error("Missing Cam "+deviceId);
+//                    LOGGER.error("Missing Cam "+deviceId);
                 }
 
                 e.printStackTrace();

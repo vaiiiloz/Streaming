@@ -1,34 +1,22 @@
 package utils;
 
-import config.AppfileConfig;
-import config.SpringContext;
+
 import entity.BBox;
 import entity.Coordinate;
 import entity.Polygon;
 import org.bytedeco.javacv.Frame;
 import org.bytedeco.javacv.OpenCVFrameConverter;
-import org.bytedeco.opencv.global.opencv_imgproc;
-
-import org.bytedeco.opencv.opencv_core.Scalar;
 import org.opencv.core.Mat;
-import org.opencv.core.MatOfByte;
 import org.opencv.core.MatOfPoint;
+import org.opencv.core.Point;
 import org.opencv.core.Rect;
-import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
-import javax.imageio.ImageIO;
-import java.awt.*;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
 public class Renderer {
-    static AppfileConfig appfileConfig= SpringContext.context.getBean("appfileConfig", AppfileConfig.class);
-    public static Mat renderAllBox(Frame frame, List<BBox> bboxes){
+    public static Frame renderAllBox(Frame frame, List<BBox> bboxes){
         OpenCVFrameConverter.ToMat convToMat = new OpenCVFrameConverter.ToMat();
         OpenCVFrameConverter.ToMat converter1 = new OpenCVFrameConverter.ToMat();
         OpenCVFrameConverter.ToOrgOpenCvCoreMat converter2 = new OpenCVFrameConverter.ToOrgOpenCvCoreMat();
@@ -41,12 +29,14 @@ public class Renderer {
             Imgproc.rectangle(imgMat,rect,color,4,1,0);
         }
 //        convToMat.close();
-        return imgMat;
+        return converter2.convert(imgMat);
+
+
 
     }
 
 
-    public static Mat renderALLPolygon(Frame frame, List<Polygon> polygonList){
+    public static Frame renderALLPolygon(Frame frame, List<Polygon> polygonList){
         OpenCVFrameConverter.ToMat convToMat = new OpenCVFrameConverter.ToMat();
         OpenCVFrameConverter.ToMat converter1 = new OpenCVFrameConverter.ToMat();
         OpenCVFrameConverter.ToOrgOpenCvCoreMat converter2 = new OpenCVFrameConverter.ToOrgOpenCvCoreMat();
@@ -58,7 +48,7 @@ public class Renderer {
         for (int num_box=0;num_box<polygonList.size();num_box++){
             Polygon polygon = polygonList.get(num_box);
             List<MatOfPoint> list = new ArrayList<>();
-            ArrayList<org.opencv.core.Point> pointsOrdered = new ArrayList<>();
+            ArrayList<Point> pointsOrdered = new ArrayList<>();
 
             for (Coordinate coord:polygon.getCoords()){
 
@@ -75,6 +65,7 @@ public class Renderer {
             }
 
         }
-        return mat;
+        return converter2.convert(mat);
+
     }
 }

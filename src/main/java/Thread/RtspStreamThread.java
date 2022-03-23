@@ -2,8 +2,7 @@ package Thread;
 
 import Mongo.CephHandler;
 import Mongo.MongoHandler;
-import config.AppfileConfig;
-import config.SpringContext;
+import config.Constants;
 import entity.BBox;
 import entity.PeopleBox;
 import org.bytedeco.javacv.Frame;
@@ -11,6 +10,7 @@ import org.bytedeco.javacv.Java2DFrameConverter;
 import org.bytedeco.javacv.OpenCVFrameConverter;
 import org.opencv.core.Mat;
 import org.opencv.imgcodecs.Imgcodecs;
+import utils.Renderer;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -57,8 +57,8 @@ public class RtspStreamThread implements Runnable {
     private String path;
 
     private VideoRecordThread videoRecordThread;
-    private Boolean isRecord = false;
-    AppfileConfig appfileConfig;
+    private Boolean isRecord;
+    private Boolean isSave;
     private CephHandler cephHandler;
 //
 
@@ -111,9 +111,9 @@ public class RtspStreamThread implements Runnable {
         this.UIBufferSize = UIBufferSize;
         this.lastListFaceBox = new ArrayList<>();
         this.isSmartRecord = isSmartRecord;
-        appfileConfig = SpringContext.context.getBean("appfileConfig", AppfileConfig.class);
-        cephHandler = new CephHandler(appfileConfig.cephAccessKey, appfileConfig.cephPrivateKey, appfileConfig.cephHostname);
-//        this.isRecord = appfileConfig.isRecord;
+        cephHandler = new CephHandler(Constants.CEPH_ACCESS_KEY, Constants.CEPH_PRIVATE_KEY, Constants.CEPH_HOST_NAME);
+        isRecord = Constants.IS_RECORD;
+        isSave = Constants.IS_SAVE;
 
 
     }
@@ -140,7 +140,11 @@ public class RtspStreamThread implements Runnable {
             Thread.currentThread().setName(Thread.currentThread().getName().replace("##", this.getClass().getSimpleName() + "-" + devicename));
             initName = true;
         }
-//        videoRecordThread.startRecordVideo();
+
+        if (isRecord){
+            videoRecordThread.startRecordVideo();
+        }
+
 
         try {
 
@@ -161,6 +165,8 @@ public class RtspStreamThread implements Runnable {
             try {
 
                 Frame frameMatUI = mFrameBuffer.pop();
+
+                Frame renderFrame = frameMatUI.clone();
                 //push background to ceph in first hour
                 if (save_hour == -1) {
                     //get current hour
@@ -193,6 +199,18 @@ public class RtspStreamThread implements Runnable {
                     listFaceBox = faces.getbBoxes();
 
                     if (listFaceBox.size() > 0) {
+                        if (isRecord){
+                            if (Constants.ModelType.equals("scrfd")){
+                                renderFrame = Renderer.renderAllBox(frameMatUI, listFaceBox);
+                            }else {
+                                renderFrame = Renderer.renderALLPolygon(frameMatUI, listFaceBox);
+                                if (isSave){
+                                    StreamingOut(renderFrame);
+                                }
+
+                            }
+                        }
+
 
                         lastListFaceBox = listFaceBox;
 
@@ -208,13 +226,26 @@ public class RtspStreamThread implements Runnable {
                     }
                     long duration = System.currentTimeMillis() - startTimer;
 
-                    if (duration >= appfileConfig.waittime * 1000) {
+                    if (duration >= Constants.WAITTIME * 1000) {
                         resetTimer = true;
                         StreamingOutMongo(faces);
 //                        StreamingOut(frameMatUI);
 
                     }
-//                    listFaceBox.clear();
+
+
+                }else{
+                    if (isRecord){
+                        if (Constants.ModelType.equals("scrfd")){
+                            renderFrame = Renderer.renderAllBox(frameMatUI, lastListFaceBox);
+                        }else {
+                            renderFrame = Renderer.renderALLPolygon(frameMatUI, lastListFaceBox);
+                            if (isSave){
+                                StreamingOut(renderFrame);
+                            }
+
+                        }
+                    }
 
                 }
 
@@ -222,9 +253,9 @@ public class RtspStreamThread implements Runnable {
 
                 //record video
                 if (isRecord) {
-                    HandelVideo(frameMatUI);
+                    HandelVideo(renderFrame);
                 }
-
+                listFaceBox.clear();
                 frameMatUI.close();
             } catch (InterruptedException e) {
 
@@ -239,8 +270,8 @@ public class RtspStreamThread implements Runnable {
     public void save_background(Frame frame, int hour, long time) {
         try {
             //create save path
-            String key = String.format("%s/%s", appfileConfig.cephFolder, devicename);
-            path = String.format("%s/%d.%s", key, hour, appfileConfig.cephBackgroundType);
+            String key = String.format("%s/%s", Constants.CEPH_FOLDER, devicename);
+            path = String.format("%s/%d.%s", key, hour, Constants.CEPH_BACKGROUND_TYPE);
             //push mongo
             mongoHandler.addBackground(devicename, path, hour, time);
             //convert to Bufferimage
@@ -248,12 +279,12 @@ public class RtspStreamThread implements Runnable {
 
             //convert to Input Stream
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            ImageIO.write(image, appfileConfig.cephBackgroundType, baos);
+            ImageIO.write(image, Constants.CEPH_BACKGROUND_TYPE, baos);
             byte[] buffer = baos.toByteArray();
             InputStream is = new ByteArrayInputStream(buffer);
 
             //push ceph
-            cephHandler.addBackground(appfileConfig.cephBuket, path, appfileConfig.cephBackgroundType, buffer.length, is);
+            cephHandler.addBackground(Constants.CEPH_BUCKET, path, Constants.CEPH_BACKGROUND_TYPE, buffer.length, is);
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -284,12 +315,11 @@ public class RtspStreamThread implements Runnable {
             org.bytedeco.opencv.opencv_core.Mat mat = convToMat.convert(frame.clone());
             Mat imgMat = converter2.convert(converter1.convert(mat.clone()));
 
-            String directoryName = String.format("%s/%s", appfileConfig.output_folder, devicename);
+            String directoryName = String.format("%s/%s", Constants.output_folder, devicename);
 
 
             int idx = new File(directoryName).list().length;
-//                OutputStream stdin = new FileOutputStream(new File(String.format("%s/%s/%d.jpg", appfileConfig.output_folder, devicename, idx)));
-            Imgcodecs.imwrite(String.format("%s/%s/%s.jpg", appfileConfig.output_folder, devicename, idx), imgMat);
+            Imgcodecs.imwrite(String.format("%s/%s/%s.jpg", Constants.output_folder, devicename, idx), imgMat);
 
         }
 
@@ -300,14 +330,14 @@ public class RtspStreamThread implements Runnable {
             if (heatmap == null) {
                 return;
             }
-            String directoryName = String.format("%s/%s", appfileConfig.output_folder, devicename);
+            String directoryName = String.format("%s/%s", Constants.output_folder, devicename);
 
 
             int idx = new File(directoryName).list().length;
 
             try {
 
-                ImageIO.write(heatmap, "jpg", new File(String.format("%s/%s/%s.jpg", appfileConfig.output_folder, devicename, new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(new Date()))));
+                ImageIO.write(heatmap, "jpg", new File(String.format("%s/%s/%s.jpg", Constants.output_folder, devicename, new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(new Date()))));
             } catch (IOException e) {
                 e.printStackTrace();
             }

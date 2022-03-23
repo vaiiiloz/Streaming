@@ -112,10 +112,40 @@ public class AppfileConfig {
     @Value("${missinglogtime}")
     public int missinglogtime;
 
-//    @Value("${isRecord}")
-//    public boolean isRecord;
+    @Value("${isRecord}")
+    public boolean isRecord;
 
-//    @Value("${isSave}")
-//    public boolean isSave;
+    @Value("${isSave}")
+    public boolean isSave;
+
+    @Value("${everfocus.UserName}")
+    public String everfocus_userName;
+
+    @Value("${everfocus.Password}")
+    public String everfocus_password;
+
+    @Value("${everfocus.realm}")
+    public String everfocus_realm;
+
+    @Value("${everfocus.nonce_count}")
+    public String everfocus_nonce_count;
+
+    @Value("${NVR.LOGIN.URI}")
+    public String NVR_LOGIN_URI;
+
+    @Value("${NVR.CAMERALIST.URI}")
+    public String NVR_CAMERALIST_URI;
+
+    @Value("${NVR.CAMERADETAIL.URI}")
+    public String NVR_CAMERADETAIL_URI;
+
+    @Value("${EVERFOCUS.LOGIN.METHOD}")
+    public String EVERFOCUS_LOGIN_METHOD;
+
+    @Value("${EVERFOCUS.LOGIN.DIGEST_URI}")
+    public String EVERFOCUS_LOGIN_DIGEST_URI;
+
+    @Value("${NVR.CAMERASTATUS.URI}")
+    public String NVR_CAMERASTATUS_URI;
 
 }

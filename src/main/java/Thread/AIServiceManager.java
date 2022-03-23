@@ -2,19 +2,24 @@ package Thread;
 
 
 import Mongo.MongoHandler;
+import com.github.chengtengfei.onvif.model.OnvifDeviceInfo;
+import com.github.chengtengfei.onvif.service.OnvifService;
 import com.google.common.collect.Lists;
-import config.AppfileConfig;
-import config.SpringContext;
+import config.Constants;
 import config.ThreadPoolFactory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+
+import static org.apache.commons.io.FileUtils.forceDelete;
 
 
 @Component("aiServiceManagement")
@@ -29,47 +34,101 @@ public class AIServiceManager {
     @Autowired
     private ThreadPoolFactory threadPoolFactory;
 
-    @Autowired
-    private AppfileConfig appfileConfig;
 
     public AIServiceManager() {
+        //        System.out.println(appfileConfig.mongouser);
+        mongoHandler = new MongoHandler(Constants.MONGO_USER, Constants.MONGO_PASS, Constants.DATABASE);
 
-        appfileConfig = SpringContext.context.getBean("appfileConfig", AppfileConfig.class);
-//        System.out.println(appfileConfig.mongouser);
-        mongoHandler = new MongoHandler(appfileConfig.mongouser, appfileConfig.pass, appfileConfig.database);
     }
 
     /**
      * Create StreamMuxerDetectThread and start all
      */
-    public void startAll() {
-        threadPoolFactory = new ThreadPoolFactory(appfileConfig);
+    public void startAll() throws IOException, InterruptedException {
+        threadPoolFactory = new ThreadPoolFactory();
         HashMap<String, String> device = new HashMap<>();
 
         //add device to rtsp
-        for (int i = 0; i < appfileConfig.rtsps.length; i++) {
-            device.put("device" + i, appfileConfig.rtsps[i]);
-        }
-//        device.put("deviceA", "rtsp://admin:12345678a@@192.168.0.252:554/fhd");
-//        device.put("deviceB", "rtsp://admin:12345678a@@192.168.0.3:8554/fhd");
-//        device.put("deviceC", "rtsp://admin:12345678a@@192.168.0.62:8554/fhd");
-//        device.put("deviceD", "rtsp://admin:12345678a@@192.168.0.247:554/fhd");
+        //connect to NVR_API
+        //login
+        NVR_API.getInstance().Login();
+        //get Camera list
+        List<JSONObject> cameraStatus = NVR_API.getInstance().getCameraSTATUS();
 
-        device.entrySet().stream().forEach(d -> {
-            String directoryName = String.format("%s/%s", appfileConfig.output_folder, d.getKey());
-            File directory = new File(directoryName);
-            if (!directory.exists()) {
 
-                directory.mkdirs();
-            } else {
-//                try {
-//                    FileUtils.deleteDirectory(directory);
-//                } catch (IOException e) {
-//                    e.printStackTrace();
-//                }
-//                directory.mkdirs();
+
+        cameraStatus.stream().filter(Status -> Status.getBoolean("OnLine")).forEach(Status -> {
+            JSONObject camera = null;
+            try {
+                camera = NVR_API.getInstance().getCameraDetail(Status.getInt("ChannelID"));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            //get camera protocol
+            String protocol = camera.get("protocol").toString();
+            String userName = camera.getString("UserName");
+            String password = camera.getString("Password");
+            String IPAddress = camera.getString("IPAddress");
+            String deviceName = camera.get("DeviceName").toString();
+            switch (protocol.toUpperCase()) {
+                case "RTSP": {
+                    //get paramar
+                    String mainUri = camera.getString("MainUri").split("rtsp://")[1];
+                    String rtsp = String.format("rtsp://%s:%s@%s", userName, password, mainUri);
+                    //case rtsp then put in to map
+                    device.put(deviceName, rtsp);
+                    break;
+                }
+                case "ONVIF": {
+                    //initilize onvif
+                    try {
+                    OnvifDeviceInfo onvifDeviceInfo = new OnvifDeviceInfo();
+                    onvifDeviceInfo.setIp(IPAddress);
+                    onvifDeviceInfo.setUsername(userName);
+                    onvifDeviceInfo.setPassword(password);
+
+
+//                    SingleIPCDiscovery.fillOnvifAddress(onvifDeviceInfo);
+
+                    //get rtsp
+                    String rtsp = OnvifService.getVideoInfo(onvifDeviceInfo).get(0).getVideoInfo().getStreamUri();
+
+                    device.put(deviceName, rtsp);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                    break;
+                }
+                default: {
+                    System.out.println("Invalid protocol");
+                }
             }
         });
+
+        //Create save folder
+        if (Constants.IS_SAVE){
+            device.entrySet().stream().forEach(d -> {
+                String directoryName = String.format("%s/%s", Constants.output_folder, d.getKey());
+                File directory = new File(directoryName);
+                if (!directory.exists()) {
+
+                    directory.mkdirs();
+                } else {
+                    try {
+                        File[] allContents = directory.listFiles();
+                        for (File file : allContents) {
+
+                            forceDelete(file);
+
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+        }
+
+
         device.entrySet().forEach(e -> {
             createAiService(e.getValue(), e.getKey());
         });
@@ -77,7 +136,7 @@ public class AIServiceManager {
         System.out.println("Begin");
 
         //Group AIService into batchsize and start the thread
-        Lists.partition(deviceIds, appfileConfig.batch)
+        Lists.partition(deviceIds, Constants.BATCH)
                 .stream()
                 .forEach(subDeviceIds -> {
                     addGrpcDetectThread(subDeviceIds);
@@ -87,19 +146,20 @@ public class AIServiceManager {
 
     /**
      * Construct and start an AIService
+     *
      * @param rtsp
      * @param deviceId
      * @return
      */
     public boolean createAiService(String rtsp, String deviceId) {
         AiService aiService = new AiService(rtsp,
-                appfileConfig.preview_width,
-                appfileConfig.preview_height,
-                appfileConfig.frameRate,
+                Constants.PREVIEW_WIDTH,
+                Constants.PREVIEW_HEIGHT,
+                Constants.FRAMERATE,
                 deviceId,
-                appfileConfig.isStreaming,
-                appfileConfig.frameBufferMaxSize,
-                appfileConfig.uiBufferSize,
+                Constants.IS_STREAMING,
+                Constants.FRAME_BUFFER_MAX_SIZE,
+                Constants.UI_BUFFER_SIZE,
                 mongoHandler);
         startAiService(deviceId, aiService);
         return true;
@@ -166,7 +226,7 @@ public class AIServiceManager {
     public synchronized void addCameraToGrocThread(String deviceId) {
         if (!deviceMapGrpcThread.containsKey(deviceId)) {
             Optional<StreamMuxerDetectThread> minGrpc = streamMuxerDetectThreadList.stream().min(Comparator.comparing(StreamMuxerDetectThread::getBatchSize));
-            if (minGrpc.isPresent() && minGrpc.get().getBatchSize() < appfileConfig.batch) {
+            if (minGrpc.isPresent() && minGrpc.get().getBatchSize() < Constants.BATCH) {
                 minGrpc.get().addDevide(deviceId);
                 addGrpcDetect(deviceId, minGrpc.get());
             } else {

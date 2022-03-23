@@ -12,8 +12,6 @@ import java.util.concurrent.ThreadFactory;
 @Component
 @Qualifier("threadPoolFactory")
 public class ThreadPoolFactory {
-    @Autowired
-    private AppfileConfig appfileConfig;
     private String THREAD_PREFIX;
     private int FIXED_THREAD_NUM;
 
@@ -35,9 +33,9 @@ public class ThreadPoolFactory {
     private ExecutorService fp = null;
 
     @Autowired
-    public ThreadPoolFactory(AppfileConfig appfileConfig) {
-        THREAD_PREFIX = appfileConfig.applicationType;
-        FIXED_THREAD_NUM = appfileConfig.threadPoolFixedNum;
+    public ThreadPoolFactory() {
+        THREAD_PREFIX = Constants.APPLICATION_TYPE;
+        FIXED_THREAD_NUM = Constants.THREAD_POOL_FIXED_NUM;
         cp = Executors.newCachedThreadPool(new MThreadFactory("cached"));
         fp = Executors.newFixedThreadPool(FIXED_THREAD_NUM, new MThreadFactory("fixed"));
 //        logger.info("Start ThreadPoolFactory - Fixed Num:{}, Prefix:{}", FIXED_THREAD_NUM, THREAD_PREFIX);

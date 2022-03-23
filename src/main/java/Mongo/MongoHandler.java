@@ -12,8 +12,7 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Aggregates;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
-import config.AppfileConfig;
-import config.SpringContext;
+import config.Constants;
 import entity.BBox;
 import entity.Coordinate;
 import entity.PeopleBox;
@@ -40,7 +39,6 @@ public class MongoHandler {
     private String user;
     private String pass;
     private String dbname;
-    AppfileConfig appfileConfig;
 
     /**
      * Construct MongoHanlder with user, pass and database name
@@ -52,7 +50,6 @@ public class MongoHandler {
         this.dbname = dbname;
         this.user = user;
         this.pass = pass;
-        appfileConfig = SpringContext.context.getBean("appfileConfig",AppfileConfig.class);
         connectMongoDB();
     }
 
@@ -61,7 +58,7 @@ public class MongoHandler {
      */
     public void connectMongoDB(){
         MongoCredential credential = MongoCredential.createScramSha1Credential(user, "admin", pass.toCharArray());
-        mongoClient = new MongoClient(new ServerAddress(appfileConfig.mongoAddress, appfileConfig.mongoPort), Arrays.asList(credential));
+        mongoClient = new MongoClient(new ServerAddress(Constants.MONGO_ADDRESS, Constants.MONGO_PORT), Arrays.asList(credential));
         database = mongoClient.getDatabase(dbname);
     }
 
@@ -104,7 +101,7 @@ public class MongoHandler {
         document.append("frameNum", frameNum);
         document.append("points", peopleBox.getbBoxes().stream().map(convertToJson()).map(json -> Document.parse(json)).collect(Collectors.toList()));
 
-        MongoCollection<Document> collection = database.getCollection(appfileConfig.box_collection);
+        MongoCollection<Document> collection = database.getCollection(Constants.BOX_COLLECTION);
         collection.insertOne(document);
 
         Thread.sleep(1);
@@ -114,7 +111,6 @@ public class MongoHandler {
     /**
      * Add people box (list of Entity (x1, y1, x2, y2), time, deviceId) to DB
      * @param peopleBox
-     * @param frameNum
      * @throws InterruptedException
      */
     public void addPeople(PeopleBox peopleBox, String path) throws InterruptedException{
@@ -133,12 +129,12 @@ public class MongoHandler {
             list.add(box.getX2());
             list.add(box.getY2());
             list.add(null);
-            list.add(appfileConfig.cephBuket);
+            list.add(Constants.CEPH_BUCKET);
             list.add(path);
             return list;
         }).collect(Collectors.toList()));
 
-        MongoCollection<Document> collection = database.getCollection(appfileConfig.box_collection);
+        MongoCollection<Document> collection = database.getCollection(Constants.BOX_COLLECTION);
         collection.insertOne(document);
         System.out.println("add "+ peopleBox.getDeviceID());
         Thread.sleep(1);
@@ -157,23 +153,23 @@ public class MongoHandler {
         Document document = new Document();
         document.append("ID", hour);
         document.append("camId",deviceID);
-        document.append("bucket", appfileConfig.cephBuket);
+        document.append("bucket", Constants.CEPH_BUCKET);
         document.append("path", path);
         document.append("time", time);
 
         //insert
-        MongoCollection<Document> collection = database.getCollection(appfileConfig.background_collection);
+        MongoCollection<Document> collection = database.getCollection(Constants.BACKGROUND_COLLECTION);
         collection.insertOne(document);
         Thread.sleep(1);
     }
 
     public void ResetAllLine(){
-        peopleBox = database.getCollection(appfileConfig.box_collection);
+        peopleBox = database.getCollection(Constants.BOX_COLLECTION);
         peopleBox.deleteMany(new BasicDBObject());
     }
 
     public void DeleteLine(String cloudId){
-        peopleBox = database.getCollection(appfileConfig.box_collection);
+        peopleBox = database.getCollection(Constants.BOX_COLLECTION);
         peopleBox.deleteOne(Filters.eq("ID", cloudId));
     }
 

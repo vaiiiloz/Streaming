@@ -14,11 +14,11 @@ import static config.Constants.THREADSCHEDULED_BACKGROUND;
 
 public class VideoRecordThread implements Runnable {
     private final int RECORDBUFFER_SIZE = 3;
-    private final int NUMBER_OF_FRAME = 30000;
+    private final int NUMBER_OF_FRAME = 50;
     private final int RECORD_FRAME_PER_ONE_VIDEO = 110;
-    private final int RECORD_WIDTH = 768;
-    private final int RECORD_HEIGHT = 512;
-    private final int RECORD_FPS = 15;
+    private final int RECORD_WIDTH = 1024;
+    private final int RECORD_HEIGHT = 1024;
+    private final int RECORD_FPS = 3;
     private BlockingBuffer mRecordBuffer;
     private BlockingBuffer eventVideoBuffer;
     private boolean mIsRecording = false;
@@ -132,6 +132,7 @@ public class VideoRecordThread implements Runnable {
                 e.printStackTrace();
             }
 
+
             while (mIsRecording) {
                 try {
                     if (mRecordBuffer.size() > 0) {
@@ -152,7 +153,7 @@ public class VideoRecordThread implements Runnable {
                         mIsRecording = false;
                         break;
                     }
-
+                    Thread.sleep(1);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 } catch (FFmpegFrameRecorder.Exception e) {
@@ -163,6 +164,7 @@ public class VideoRecordThread implements Runnable {
 
             if (mIsRecording == false) {
                 try {
+                    System.out.println("STOP video");;
                     recorder.stop();
                     recorder.release();
                     mRecordBuffer.clear();

@@ -1,8 +1,7 @@
 package Thread;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import config.AppfileConfig;
-import config.SpringContext;
+import config.Constants;
 import entity.*;
 import inference.GRPCInferenceServiceGrpc;
 import inference.GrpcService;
@@ -53,22 +52,21 @@ public class StreamMuxerDetectThread implements Runnable {
     private boolean isGetModelInfor;
     private GRPCInferenceServiceGrpc.GRPCInferenceServiceBlockingStub blockingStub = null;
     private List<Frame> lsitFrames = new ArrayList<>();
-    AppfileConfig appfileConfig;
+//    private Logger LOGGER = LogManager.getLogger(StreamMuxerDetectThread.class);
 
     public StreamMuxerDetectThread(List<String> deviceIds, ConcurrentHashMap<String, AiService> allAIServiceMap) {
         this.deviceIds.addAll(deviceIds);
-        appfileConfig = SpringContext.context.getBean("appfileConfig", AppfileConfig.class);
         this.allAIServiceMap = allAIServiceMap;
-        this.batchSize = appfileConfig.batch;
-        this.preview_width = appfileConfig.preview_width;
-        this.preview_height = appfileConfig.preview_height;
+        this.batchSize = Constants.BATCH;
+        this.preview_width = Constants.PREVIEW_WIDTH;
+        this.preview_height = Constants.PREVIEW_HEIGHT;
         setName();
 
         //create Triton Client
-        initTritonClient(appfileConfig.host, appfileConfig.port,
-                appfileConfig.modelName, appfileConfig.modelVersion,
-                appfileConfig.preview_width, appfileConfig.preview_height,
-                appfileConfig.isGetModelInfo);
+        initTritonClient(Constants.host, Constants.port,
+                Constants.modelName, Constants.modelVersion,
+                preview_width, preview_height,
+                Constants.isGetModelInfo);
     }
 
     public boolean isRunning() {
@@ -90,6 +88,7 @@ public class StreamMuxerDetectThread implements Runnable {
         GrpcService.ServerLiveRequest serverLiveRequest = GrpcService.ServerLiveRequest.getDefaultInstance();
         GrpcService.ServerLiveResponse serverLiveResponse = blockingStub.serverLive(serverLiveRequest);
         if (!serverLiveResponse.getLive()) {
+//            LOGGER.error("Server is not live");
             System.out.println("Server is not live");
             return false;
         }
@@ -97,6 +96,7 @@ public class StreamMuxerDetectThread implements Runnable {
         GrpcService.ServerReadyRequest serverReadyRequest = GrpcService.ServerReadyRequest.getDefaultInstance();
         GrpcService.ServerReadyResponse serverReadyResponse = blockingStub.serverReady(serverReadyRequest);
         if (!serverReadyResponse.getReady()) {
+//            LOGGER.error("Server is not ready");
             System.out.println("Server is not ready");
             return false;
         }
@@ -106,6 +106,7 @@ public class StreamMuxerDetectThread implements Runnable {
         GrpcService.ModelReadyRequest modelReadyRequest = modelReadyBuilder.build();
         GrpcService.ModelReadyResponse modelReadyResponse = blockingStub.modelReady(modelReadyRequest);
         if (!modelReadyResponse.getReady()) {
+//            LOGGER.error("Model is not ready");
             System.out.println("Model is not ready");
             return false;
         }
@@ -120,6 +121,7 @@ public class StreamMuxerDetectThread implements Runnable {
                 GrpcService.ModelMetadataResponse modelMetadataResponse = blockingStub.modelMetadata(modelMetadataRequest);
 //                System.out.println(modelMetadataResponse.toString());
             } catch (Exception e) {
+//                LOGGER.error("Wrong info");
                 System.out.println("Wrong info");
                 return false;
             }
@@ -132,6 +134,7 @@ public class StreamMuxerDetectThread implements Runnable {
         try {
             GrpcService.ModelConfigResponse modelConfigResponse = blockingStub.modelConfig(modelConfigRequest);
         } catch (Exception e) {
+//            LOGGER.error("Wrong config");
             System.out.println("Wrong config");
             return false;
         }
@@ -169,6 +172,7 @@ public class StreamMuxerDetectThread implements Runnable {
                     });
                     return;
                 }
+
             }
 
             missingFrameDeviceIds.clear();
@@ -207,16 +211,17 @@ public class StreamMuxerDetectThread implements Runnable {
                 return;
             }
 //            //add frame
-//            images.stream().filter(e -> !missingFrameDeviceIds.contains(e.getKey()))
-//                    .filter(e -> !(e.getValue().image == null))
-//                    .forEach(e ->{
-//                try {
-//
-//                    allAIServiceMap.get(e.getKey()).getRtspStreamThread().getmFrameBuffer().push(e.getValue());
-//                }catch (InterruptedException exception){
-//                    exception.printStackTrace();
-//                }
-//            });
+            images.stream().filter(e -> !missingFrameDeviceIds.contains(e.getKey()))
+                    .filter(e -> !(e.getValue().image == null))
+                    .forEach(e ->{
+                try {
+
+                    allAIServiceMap.get(e.getKey()).getRtspStreamThread().getmFrameBuffer().push(e.getValue());
+
+                }catch (InterruptedException exception){
+                    exception.printStackTrace();
+                }
+            });
 
             //add bbox
             people.stream().filter(e -> !missingFrameDeviceIds.contains(e.getDeviceID()))
@@ -239,7 +244,7 @@ public class StreamMuxerDetectThread implements Runnable {
             long converInputStart = System.currentTimeMillis();
             List<String> listDeviceId = new ArrayList<>();
             List<Integer> listInputSize = new ArrayList<>();
-
+            List<String> batch_deviceId = new ArrayList<>();
             List<TritonInputData> listInputData = new ArrayList<>();
             List<Thread> convertWorkers = new ArrayList<>();
             CountDownLatch countDownLatch = new CountDownLatch(images.size());
@@ -272,12 +277,15 @@ public class StreamMuxerDetectThread implements Runnable {
                     for (int i = 0; i < listInputData.size(); i++) {
                         TritonInputData tritonInputData = listInputData.get(i);
                         int[] image = tritonInputData.getData();
+                        batch_deviceId.add(tritonInputData.getDeviceId());
+
 //                while (image.length<maxInputSize){
 //                    int[] fillerArray = new int[maxInputSize-image.length];
 //                    image = ArrayUtils.addAll(image, fillerArray);
 //                }
                         inputData = ArrayUtils.addAll(inputData, Arrays.copyOf(image, maxInputSize));
                     }
+
                     long convertInputTime = System.currentTimeMillis() - converInputStart;
                     long buildInferReqStart = System.currentTimeMillis();
 
@@ -305,7 +313,7 @@ public class StreamMuxerDetectThread implements Runnable {
 
                     //create inference
                     GrpcService.ModelInferRequest.Builder modelInferBuilder = GrpcService.ModelInferRequest.newBuilder();
-                    modelInferBuilder.setModelName(appfileConfig.modelName);
+                    modelInferBuilder.setModelName(Constants.modelName);
                     modelInferBuilder.addInputs(inferInputBuilder);
                     modelInferBuilder.addOutputs(output0Builder);
                     modelInferBuilder.addOutputs(output1Builder);
@@ -320,14 +328,14 @@ public class StreamMuxerDetectThread implements Runnable {
                     long inferenceTime = System.currentTimeMillis() - requestStart;
 
                     List<TritonDetectedResults> tritonPostResult = new ArrayList<>();
-                    switch (appfileConfig.modelType) {
+                    switch (Constants.ModelType) {
                         case "scrfd": {
-                            tritonPostResult = TritonDataProcessing.peoplePostProcessScrfd(response, deviceIds);
+                            tritonPostResult = TritonDataProcessing.peoplePostProcessScrfd(response, batch_deviceId);
                             break;
                         }
 
                         case "rapid": {
-                            tritonPostResult = TritonDataProcessing.peoplePostProcessRapid(response, deviceIds);
+                            tritonPostResult = TritonDataProcessing.peoplePostProcessRapid(response, batch_deviceId);
                             break;
                         }
 
@@ -336,15 +344,7 @@ public class StreamMuxerDetectThread implements Runnable {
 
                     return tritonPostResult.stream().map(e -> new PeopleBox(e.getDeviceId(), now, e.getListBBoxes())).collect(Collectors.toList());
                 } catch (Exception e) {
-                    System.out.println(listInputData.size());
-                    System.out.println(listInputSize.size());
-                    listInputData.forEach(input -> {
-                        System.out.println("Id " + input.getDeviceId() + " leng " + input.getData().length);
-                    });
-                    images.forEach(image -> {
-                        System.out.println("Device ID: " + image.getKey() + " and Frame length " + (image.getValue().image == null));
-                    });
-                    System.out.println("Image length" + images.isEmpty() + " input data " + inputData.length);
+//                    LOGGER.error("Triton Server is not available ");
                     e.printStackTrace();
                     return null;
                 }
