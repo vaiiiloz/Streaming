@@ -10,8 +10,8 @@ import org.springframework.stereotype.Component;
 @Qualifier("appfileConfig")
 public class AppfileConfig {
 
-    @Value("${rtsp}")
-    public String rtsp;
+    @Value("${rtsps}")
+    public String[] rtsps;
 
     @Value("${width}")
     public int preview_width;
@@ -43,8 +43,8 @@ public class AppfileConfig {
     @Value("${batch}")
     public int batch;
 
-    @Value("${collection}")
-    public String collection;
+    @Value("${box_collection}")
+    public String box_collection;
 
     @Value("${threadpool.prefix}")
     public String threadPoolPrefix;
@@ -87,6 +87,30 @@ public class AppfileConfig {
 
     @Value("${pass}")
     public String pass;
+
+    @Value("${cephAccessKey}")
+    public String cephAccessKey;
+
+    @Value("${cephPrivateKey}")
+    public String cephPrivateKey;
+
+    @Value("${cephHostname}")
+    public String cephHostname;
+
+    @Value("${cephBucket}")
+    public String cephBuket;
+
+    @Value("${cephFolder}")
+    public String cephFolder;
+
+    @Value("${background_collection}")
+    public String background_collection;
+
+    @Value("${cephBackgroundType}")
+    public String cephBackgroundType;
+
+    @Value("${missinglogtime}")
+    public int missinglogtime;
 
 //    @Value("${isRecord}")
 //    public boolean isRecord;

@@ -15,6 +15,18 @@ public class AiService {
     private String deviceId;
     private Integer frameBufferMaxSize;
 
+    /**
+     * Contruct AIService with args of Streaming and Capture Thread
+     * @param rtsp
+     * @param preview_width
+     * @param preview_height
+     * @param frameRate
+     * @param deviceId
+     * @param isStreaming
+     * @param frameBufferMaxSize
+     * @param UIBufferSize
+     * @param mongoHandler
+     */
     public AiService(String rtsp, int preview_width, int preview_height, int frameRate, String deviceId, Boolean isStreaming, Integer frameBufferMaxSize, Integer UIBufferSize, MongoHandler mongoHandler) {
         this.rtsp = rtsp;
         this.preview_width = preview_width;
@@ -26,11 +38,18 @@ public class AiService {
 
     }
 
+    /**
+     * Start both Capture and Stream thread
+     * @param executorService
+     */
     public void startAll(ExecutorService executorService) {
         executorService.execute(rtspStreamThread);
         executorService.execute(rtspCaptureThread);
     }
 
+    /**
+     * Stop both Capture and Stream Thread
+     */
     public void stopAll() {
         rtspCaptureThread.setRunning(false);
         rtspStreamThread.setRunning(false);

@@ -1,25 +1,24 @@
 package entity;
 
-import java.util.Date;
 import java.util.List;
 
 public class PeopleBox {
 
     private String deviceID;
-    private Date date;
+    private long date;
     private List bBoxes;
 
-    public <T> PeopleBox(String deviceID, Date date, List<T> bBoxes) {
+    public PeopleBox(String deviceID, long date, List<Entity> bBox){
         this.deviceID = deviceID;
         this.date = date;
-        this.bBoxes = bBoxes;
+        this.bBoxes = bBox;
     }
 
-    public Date getDate() {
+    public long getDate() {
         return date;
     }
 
-    public void setDate(Date date) {
+    public void setDate(long date) {
         this.date = date;
     }
 
@@ -31,12 +30,12 @@ public class PeopleBox {
         this.deviceID = deviceID;
     }
 
-    public <T> List<T> getbBoxes() {
-        return (List<T>) bBoxes;
+    public List<Entity> getbBoxes() {
+        return bBoxes;
     }
 
 
-    public <T> void setbBoxes(List<T> bBoxes) {
+    public void setbBoxes(List<Entity> bBoxes) {
         this.bBoxes = bBoxes;
     }
 }

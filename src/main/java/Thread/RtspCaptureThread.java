@@ -1,5 +1,7 @@
 package Thread;
 
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 import org.bytedeco.ffmpeg.global.avcodec;
 import org.bytedeco.javacv.FFmpegFrameGrabber;
 import org.bytedeco.javacv.OpenCVFrameConverter;
@@ -7,6 +9,7 @@ import org.bytedeco.javacv.OpenCVFrameConverter;
 import static org.bytedeco.ffmpeg.global.avutil.AV_PIX_FMT_BGR24;
 
 public class RtspCaptureThread implements Runnable{
+    private static final Logger LOGGER = LogManager.getLogger(RtspCaptureThread.class);
     private boolean running = true;
     private RtspStreamThread mUIThread;
     private String rtsp;
@@ -19,10 +22,12 @@ public class RtspCaptureThread implements Runnable{
     private Object lockStreamCapture = new Object();
     private BlockingBuffer mFrameBuffer;
     private boolean isGPU = false;
+    private long start_missing_frame = 0;
     OpenCVFrameConverter.ToMat convToMat = new OpenCVFrameConverter.ToMat();
     OpenCVFrameConverter.ToMat converter1 = new OpenCVFrameConverter.ToMat();
     OpenCVFrameConverter.ToOrgOpenCvCoreMat converter2 = new OpenCVFrameConverter.ToOrgOpenCvCoreMat();
     org.bytedeco.javacv.Frame frame = null;
+
 
     public RtspCaptureThread(RtspStreamThread mUIThread, String rtsp, int preview_width, int preview_height, int frameRate, String deviceId) {
         this.mUIThread = mUIThread;
@@ -43,8 +48,13 @@ public class RtspCaptureThread implements Runnable{
         this.running = running;
     }
 
+    /**
+     * Create streamGrapper from rtsp
+     * @param rtspInput
+     */
     public void createRtspGrabber(String rtspInput){
         synchronized (this.lockStreamCapture){
+            //stop and create new grabber if already exists
             if (streamGrabber!=null){
                 try{
                     streamGrabber.stop();
@@ -104,6 +114,10 @@ public class RtspCaptureThread implements Runnable{
         }
     }
 
+
+    /**
+     * Grabber frame and push to Steam and Muxer Thread
+     */
     public void decodeFrame(){
         synchronized (this.lockStreamCapture){
             try {
@@ -112,11 +126,22 @@ public class RtspCaptureThread implements Runnable{
                     mUIThread.pushFrame(frame.clone());
 
                     mFrameBuffer.push(frame.clone());
+
+                    //reset missing cam time
+                    start_missing_frame = 0;
                     Thread.sleep(1);
                 }
             } catch (InterruptedException e) {
                 e.printStackTrace();
             } catch (FFmpegFrameGrabber.Exception e) {
+
+
+                if (start_missing_frame==0){ //start count missing cam time
+                    start_missing_frame = System.currentTimeMillis();
+                }else if ((System.currentTimeMillis()-start_missing_frame) > (5*6000)){ //log error if miss cam more than 5 min
+                    LOGGER.error("Missing Cam "+deviceId);
+                }
+
                 e.printStackTrace();
             }
         }

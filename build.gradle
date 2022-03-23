@@ -69,6 +69,10 @@ dependencies {
 
     implementation('org.apache.commons:commons-lang3:3.12.0')
 
+    //s3 aws
+    implementation platform('com.amazonaws:aws-java-sdk-bom:1.11.1000')
+    implementation 'com.amazonaws:aws-java-sdk-s3'
+
     //ffmpeg
     implementation 'net.bramp.ffmpeg:ffmpeg:0.6.2'
 

@@ -1,18 +1,21 @@
 package entity;
 
-import com.mongodb.BasicDBObject;
-import com.mongodb.DBObject;
-import org.bson.Document;
-
-public class BBox {
+public class BBox implements Entity{
     private int x;
     private int y;
     private int w;
     private int h;
+    private int x1;
+    private int x2;
+    private int y1;
+    private int y2;
     private double score;
 
     public BBox(int x1, int y1, int x2, int y2, double score) {
-
+        this.x1 = x1;
+        this.x2 = x2;
+        this.y1 = y1;
+        this.y2 = y2;
         this.w = Math.abs(x1-x2);
         this.h = Math.abs(y1-y2);
         this.x = x1+this.w/2;
@@ -20,32 +23,20 @@ public class BBox {
         this.score = score;
     }
 
-//    public BBox(Document document) {
-//        x1 = (int) document.get("x1");
-//        y1 = (int) document.get("y1");
-//        w = (int) document.get("w");
-//        h = (int) document.get("h");
-//        score = (double) document.get("score");
-//    }
-
-    public DBObject toDBObject(){
-        return new BasicDBObject("x1",x).append("y1",y).append("w",w).append("h",h).append("score", score);
+    public int getX1() {
+        return x1;
     }
 
-    public void converFromDBObject(BasicDBObject DBObject){
-        x = (int) DBObject.get("x");
-        y = (int) DBObject.get("y");
-        w = (int) DBObject.get("w");
-        h = (int) DBObject.get("h");
-        score = (double) DBObject.get("score");
+    public int getX2() {
+        return x2;
     }
 
-    public void converFromDocument(Document DBObject){
-        x = (int) DBObject.get("x");
-        y = (int) DBObject.get("y");
-        w = (int) DBObject.get("w");
-        h = (int) DBObject.get("h");
-        score = (double) DBObject.get("score");
+    public int getY1() {
+        return y1;
+    }
+
+    public int getY2() {
+        return y2;
     }
 
     public int getX() {

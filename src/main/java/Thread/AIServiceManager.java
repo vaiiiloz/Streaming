@@ -34,26 +34,34 @@ public class AIServiceManager {
 
     public AIServiceManager() {
 
-        appfileConfig = SpringContext.context.getBean("appfileConfig",AppfileConfig.class);
+        appfileConfig = SpringContext.context.getBean("appfileConfig", AppfileConfig.class);
 //        System.out.println(appfileConfig.mongouser);
         mongoHandler = new MongoHandler(appfileConfig.mongouser, appfileConfig.pass, appfileConfig.database);
     }
 
-    public void startAll(){
+    /**
+     * Create StreamMuxerDetectThread and start all
+     */
+    public void startAll() {
         threadPoolFactory = new ThreadPoolFactory(appfileConfig);
-        HashMap<String, String> device = new HashMap<String, String>();
-        device.put("deviceA", appfileConfig.rtsp);
-        device.put("deviceB", "rtsp://admin:12345678a@@192.168.0.3:8554/fhd");
-        device.put("deviceC", "rtsp://admin:12345678a@@192.168.0.62:8554/fhd");
-        device.put("deviceD", "rtsp://admin:12345678a@@192.168.0.247:554/fhd");
+        HashMap<String, String> device = new HashMap<>();
 
-        device.entrySet().stream().forEach(d ->{
-            String directoryName = String.format("%s/%s",appfileConfig.output_folder,d.getKey());
+        //add device to rtsp
+        for (int i = 0; i < appfileConfig.rtsps.length; i++) {
+            device.put("device" + i, appfileConfig.rtsps[i]);
+        }
+//        device.put("deviceA", "rtsp://admin:12345678a@@192.168.0.252:554/fhd");
+//        device.put("deviceB", "rtsp://admin:12345678a@@192.168.0.3:8554/fhd");
+//        device.put("deviceC", "rtsp://admin:12345678a@@192.168.0.62:8554/fhd");
+//        device.put("deviceD", "rtsp://admin:12345678a@@192.168.0.247:554/fhd");
+
+        device.entrySet().stream().forEach(d -> {
+            String directoryName = String.format("%s/%s", appfileConfig.output_folder, d.getKey());
             File directory = new File(directoryName);
-            if (!directory.exists()){
+            if (!directory.exists()) {
 
                 directory.mkdirs();
-            }else{
+            } else {
 //                try {
 //                    FileUtils.deleteDirectory(directory);
 //                } catch (IOException e) {
@@ -67,15 +75,23 @@ public class AIServiceManager {
         });
         List<String> deviceIds = device.entrySet().stream().map(e -> e.getKey()).collect(Collectors.toList());
         System.out.println("Begin");
+
+        //Group AIService into batchsize and start the thread
         Lists.partition(deviceIds, appfileConfig.batch)
                 .stream()
-                .forEach(subDeviceIds ->{
+                .forEach(subDeviceIds -> {
                     addGrpcDetectThread(subDeviceIds);
                 });
         return;
     }
 
-    public boolean createAiService(String rtsp, String deviceId){
+    /**
+     * Construct and start an AIService
+     * @param rtsp
+     * @param deviceId
+     * @return
+     */
+    public boolean createAiService(String rtsp, String deviceId) {
         AiService aiService = new AiService(rtsp,
                 appfileConfig.preview_width,
                 appfileConfig.preview_height,
@@ -89,22 +105,22 @@ public class AIServiceManager {
         return true;
     }
 
-    public synchronized void startAiService(String deviceId, AiService aiService){
+    public synchronized void startAiService(String deviceId, AiService aiService) {
         allAIServiceMap.putIfAbsent(deviceId, aiService);
         aiService.startAll(threadPoolFactory.getCachedExecutor());
     }
 
-    public AiService getAIService(String deviceId){
+    public AiService getAIService(String deviceId) {
         return allAIServiceMap.get(deviceId);
     }
 
-    public boolean isRunning(String deviceId){
+    public boolean isRunning(String deviceId) {
         return allAIServiceMap.containsKey(deviceId);
     }
 
-    public synchronized static void stopAIService(String deviceId){
+    public synchronized static void stopAIService(String deviceId) {
         AiService aiService = allAIServiceMap.get(deviceId);
-        if (aiService == null){
+        if (aiService == null) {
             return;
         }
 
@@ -113,12 +129,12 @@ public class AIServiceManager {
         removeGrpcDetectThread(deviceId);
     }
 
-    public static void removeGrpcDetectThread(String deviceId){
-        if (deviceMapGrpcThread.containsKey(deviceId)){
-            if (deviceMapGrpcThread.get(deviceId).getBatchSize()<=1){
+    public static void removeGrpcDetectThread(String deviceId) {
+        if (deviceMapGrpcThread.containsKey(deviceId)) {
+            if (deviceMapGrpcThread.get(deviceId).getBatchSize() <= 1) {
                 deviceMapGrpcThread.get(deviceId).stop();
                 streamMuxerDetectThreadList.remove(deviceMapGrpcThread.get(deviceId));
-            }else{
+            } else {
                 deviceMapGrpcThread.get(deviceId).removeDevice(deviceId);
             }
             deviceMapGrpcThread.remove(deviceId);
@@ -133,27 +149,27 @@ public class AIServiceManager {
         AIServiceManager.allAIServiceMap = allAIServiceMap;
     }
 
-    public synchronized void addGrpcDetect(String deviceId, StreamMuxerDetectThread streamMuxerDetectThread){
+    public synchronized void addGrpcDetect(String deviceId, StreamMuxerDetectThread streamMuxerDetectThread) {
         deviceMapGrpcThread.put(deviceId, streamMuxerDetectThread);
     }
 
-    public synchronized void addGrpcDetectThread(List<String> subDeviceIds){
+    public synchronized void addGrpcDetectThread(List<String> subDeviceIds) {
         StreamMuxerDetectThread streamMuxerDetectThread = new StreamMuxerDetectThread(subDeviceIds, allAIServiceMap);
         threadPoolFactory.getCachedExecutor().execute(streamMuxerDetectThread);
-        subDeviceIds.stream().forEach(e ->{
+        subDeviceIds.stream().forEach(e -> {
             addGrpcDetect(e, streamMuxerDetectThread);
         });
 
         streamMuxerDetectThreadList.add(streamMuxerDetectThread);
     }
 
-    public synchronized void addCameraToGrocThread(String deviceId){
-        if (!deviceMapGrpcThread.containsKey(deviceId)){
+    public synchronized void addCameraToGrocThread(String deviceId) {
+        if (!deviceMapGrpcThread.containsKey(deviceId)) {
             Optional<StreamMuxerDetectThread> minGrpc = streamMuxerDetectThreadList.stream().min(Comparator.comparing(StreamMuxerDetectThread::getBatchSize));
-            if (minGrpc.isPresent() && minGrpc.get().getBatchSize()<appfileConfig.batch){
+            if (minGrpc.isPresent() && minGrpc.get().getBatchSize() < appfileConfig.batch) {
                 minGrpc.get().addDevide(deviceId);
-                addGrpcDetect(deviceId,minGrpc.get());
-            }else{
+                addGrpcDetect(deviceId, minGrpc.get());
+            } else {
                 addGrpcDetectThread(Arrays.asList(deviceId));
             }
         }

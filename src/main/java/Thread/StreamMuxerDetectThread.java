@@ -174,7 +174,7 @@ public class StreamMuxerDetectThread implements Runnable {
             missingFrameDeviceIds.clear();
 
             //triton stream
-//            System.out.println(aiserviceStream.get().allMatch((e -> e.getRtspCaptureThread().getmFrameBuffer().isEmpty())));
+            //Get image from Capture Thread
             List<Pair<String, Frame>> images = aiserviceStream.get()
                     .filter(e -> !e.getRtspCaptureThread().getmFrameBuffer().isEmpty())
                     .map(e -> {
@@ -189,6 +189,7 @@ public class StreamMuxerDetectThread implements Runnable {
                     }).filter(e -> !(e.getValue().image == null)).collect(Collectors.toList());
 
 
+            //Add fake frame to the missing batch size
             int i = 1;
             while (images.size() < batchSize) {
 //                System.out.println(backupFrame.image.length);
@@ -198,7 +199,7 @@ public class StreamMuxerDetectThread implements Runnable {
                 i++;
             }
 
-
+            //push batch to tritonserver
             List<PeopleBox> people = peopleDetectTriton(images);
 
 
@@ -233,7 +234,8 @@ public class StreamMuxerDetectThread implements Runnable {
     public List<PeopleBox> peopleDetectTriton(List<Pair<String, Frame>> images) {
         int[] inputData = new int[0];
         try {
-            Date now = new Date();
+
+            long now = System.currentTimeMillis();
             long converInputStart = System.currentTimeMillis();
             List<String> listDeviceId = new ArrayList<>();
             List<Integer> listInputSize = new ArrayList<>();
@@ -242,7 +244,7 @@ public class StreamMuxerDetectThread implements Runnable {
             List<Thread> convertWorkers = new ArrayList<>();
             CountDownLatch countDownLatch = new CountDownLatch(images.size());
 
-            //create converting workers
+            //create converting workers to convert frame to uint8 array
             for (int i = 0; i < images.size(); i++) {
                 Pair<String, Frame> input = images.get(i);
                 String deviceId = input.getKey();
@@ -331,16 +333,9 @@ public class StreamMuxerDetectThread implements Runnable {
 
                     }
 
-//                tritonPostResult.forEach(e->{
-//                    if (e.getListBBoxes().size()>0){
-//                        System.out.println("Device "+e.getDeviceId()+" detect "+e.getListBBoxes().size());
-//                    }
-//
-//                });
 
                     return tritonPostResult.stream().map(e -> new PeopleBox(e.getDeviceId(), now, e.getListBBoxes())).collect(Collectors.toList());
                 } catch (Exception e) {
-                    System.out.println("backupFrame " + (backupFrame.image == null) + " " + backupFrame.imageHeight + " " + backupFrame.imageWidth);
                     System.out.println(listInputData.size());
                     System.out.println(listInputSize.size());
                     listInputData.forEach(input -> {

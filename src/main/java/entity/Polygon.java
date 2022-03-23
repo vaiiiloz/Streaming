@@ -3,12 +3,20 @@ package entity;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Polygon {
+public class Polygon implements Entity{
     private List<Coordinate> coords;
 
     private int level;
 
     private double score;
+
+    private int x;
+
+    private int y;
+
+    private int w;
+
+    private int h;
 
     public Polygon(List<Coordinate> coords, int level, double score) {
         this.coords = coords;
@@ -17,6 +25,10 @@ public class Polygon {
     }
 
     public Polygon(int x, int y, int w, int h, float a, double score){
+        this.x = x;
+        this.y = y;
+        this.w = w;
+        this.h = h;
         this.score = score;
         this.level = 4;
 
@@ -44,6 +56,56 @@ public class Polygon {
 
         this.coords = coordinateList;
 
+    }
+
+    public int getX1(){
+        return (x-w/2);
+    }
+
+    public int getX2(){
+        return (x+w/2);
+    }
+
+    public int getY1(){
+        return (y-h/2);
+    }
+
+    public int getY2(){
+        return (y+h/2);
+    }
+
+
+
+    public int getW() {
+        return w;
+    }
+
+    public void setW(int w) {
+        this.w = w;
+    }
+
+    public int getH() {
+        return h;
+    }
+
+    public void setH(int h) {
+        this.h = h;
+    }
+
+    public int getX() {
+        return x;
+    }
+
+    public void setX(int x) {
+        this.x = x;
+    }
+
+    public int getY() {
+        return y;
+    }
+
+    public void setY(int y) {
+        this.y = y;
     }
 
     public double getScore() {

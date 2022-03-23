@@ -1,7 +1,5 @@
 package entity;
 
-import entity.BBox;
-
 import java.util.List;
 
 public class TritonDetectedResults {
@@ -21,11 +19,11 @@ public class TritonDetectedResults {
         this.deviceId = deviceId;
     }
 
-    public List<BBox> getListBBoxes() {
+    public List getListBBoxes() {
         return listBBoxes;
     }
 
-    public void setListBBoxes(List<BBox> listBBoxes) {
+    public void setListBBoxes(List listBBoxes) {
         this.listBBoxes = listBBoxes;
     }
 }

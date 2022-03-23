@@ -24,6 +24,7 @@ import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
@@ -41,6 +42,12 @@ public class MongoHandler {
     private String dbname;
     AppfileConfig appfileConfig;
 
+    /**
+     * Construct MongoHanlder with user, pass and database name
+     * @param user
+     * @param pass
+     * @param dbname
+     */
     public MongoHandler(String user, String pass, String dbname) {
         this.dbname = dbname;
         this.user = user;
@@ -49,14 +56,13 @@ public class MongoHandler {
         connectMongoDB();
     }
 
+    /**
+     * Connect to MongoDB
+     */
     public void connectMongoDB(){
         MongoCredential credential = MongoCredential.createScramSha1Credential(user, "admin", pass.toCharArray());
         mongoClient = new MongoClient(new ServerAddress(appfileConfig.mongoAddress, appfileConfig.mongoPort), Arrays.asList(credential));
-
         database = mongoClient.getDatabase(dbname);
-
-
-
     }
 
     public void detectChangeDB(){
@@ -81,41 +87,13 @@ public class MongoHandler {
         }
     }
 
-//    public List<PeopleBox> getBoxes(){
-//        MongoCollection collection = database.getCollection(appfileConfig.collection);
-//        List<PeopleBox> peopleBoxes = new ArrayList<>();
-//        FindIterable<Document> findIterable = collection.find();
-//        MongoCursor<Document> cursor = findIterable.iterator();
-//        while (cursor.hasNext()){
-//            Document document = cursor.next();
-//            String deviceId = document.get("DeviceID").toString();
-//            int hour =  Integer.parseInt(document.get("hour").toString());
-//            int min = Integer.parseInt(document.get("min").toString());
-//            int sec = Integer.parseInt(document.get("sec").toString());
-//            List<Document> bboxes = (List<Document>) document.get("points");
-//            List<BBox> boxes = bboxes.stream().map(convertDocumentToBbox()).collect(Collectors.toList());
-//            peopleBoxes.add(new PeopleBox(deviceId, hour, min, sec, boxes));
-//        }
-//        collection.drop();
-//        return peopleBoxes;
-//    }
 
-//    public PeopleBox getPolygon(){
-//        peopleBox = database.getCollection(appfileConfig.collection);
-//        FindIterable<Document> findIterable = peopleBox.find();
-//        MongoCursor<Document> cursor = findIterable.iterator();
-//        if (cursor.hasNext()){
-//            Document document = cursor.next();
-//            String deviceId = document.get("DeviceID").toString();
-//            int hour = (int) (((Double) document.get("hour")).doubleValue());
-//            int time = (int) (((Double) document.get("time")).doubleValue());
-//            List<Document> bboxes = (List<Document>) document.get("points");
-//            List<Polygon> polygons = bboxes.stream().map(convertDocumentToPolygon()).collect(Collectors.toList());
-//            return new PeopleBox(deviceId, hour, time, polygons);
-//        }
-//        return null;
-//    }
-
+    /**
+     * Add people box (list of Entity, time, deviceId) to DB
+     * @param peopleBox
+     * @param frameNum
+     * @throws InterruptedException
+     */
     public void addPeople(PeopleBox peopleBox, int frameNum) throws InterruptedException{
         if (peopleBox.getbBoxes().size()<=0){
             return;
@@ -126,36 +104,76 @@ public class MongoHandler {
         document.append("frameNum", frameNum);
         document.append("points", peopleBox.getbBoxes().stream().map(convertToJson()).map(json -> Document.parse(json)).collect(Collectors.toList()));
 
-        MongoCollection<Document> collection = database.getCollection(appfileConfig.collection);
+        MongoCollection<Document> collection = database.getCollection(appfileConfig.box_collection);
         collection.insertOne(document);
 
         Thread.sleep(1);
 
     }
 
-    public void addPeople(PeopleBox peopleBox) throws InterruptedException{
+    /**
+     * Add people box (list of Entity (x1, y1, x2, y2), time, deviceId) to DB
+     * @param peopleBox
+     * @param frameNum
+     * @throws InterruptedException
+     */
+    public void addPeople(PeopleBox peopleBox, String path) throws InterruptedException{
         if (peopleBox.getbBoxes().size()<=0){
             return;
         }
         Document document = new Document();
-        document.append("DeviceID", peopleBox.getDeviceID());
+        document.append("camId", peopleBox.getDeviceID());
         document.append("time", peopleBox.getDate());
-        document.append("points", peopleBox.getbBoxes().stream().map(convertToJson()).map(json -> Document.parse(json)).collect(Collectors.toList()));
+//        document.append("points", peopleBox.getbBoxes().stream().map(convertToJson()).map(json -> Document.parse(json)).collect(Collectors.toList()));
+        document.append("boxes", peopleBox.getbBoxes().stream().map(box -> {
+            List list = new ArrayList<>();
+            //add box value
+            list.add(box.getX1());
+            list.add(box.getY1());
+            list.add(box.getX2());
+            list.add(box.getY2());
+            list.add(null);
+            list.add(appfileConfig.cephBuket);
+            list.add(path);
+            return list;
+        }).collect(Collectors.toList()));
 
-        MongoCollection<Document> collection = database.getCollection(appfileConfig.collection);
+        MongoCollection<Document> collection = database.getCollection(appfileConfig.box_collection);
         collection.insertOne(document);
         System.out.println("add "+ peopleBox.getDeviceID());
         Thread.sleep(1);
 
     }
 
+    /**
+     * Insert background path in ceph server into MongoDB
+     * @param deviceID
+     * @param path
+     * @param hour
+     * @param time
+     * @throws InterruptedException
+     */
+    public void addBackground(String deviceID, String path, int hour, long time) throws InterruptedException{
+        Document document = new Document();
+        document.append("ID", hour);
+        document.append("camId",deviceID);
+        document.append("bucket", appfileConfig.cephBuket);
+        document.append("path", path);
+        document.append("time", time);
+
+        //insert
+        MongoCollection<Document> collection = database.getCollection(appfileConfig.background_collection);
+        collection.insertOne(document);
+        Thread.sleep(1);
+    }
+
     public void ResetAllLine(){
-        peopleBox = database.getCollection(appfileConfig.collection);
+        peopleBox = database.getCollection(appfileConfig.box_collection);
         peopleBox.deleteMany(new BasicDBObject());
     }
 
     public void DeleteLine(String cloudId){
-        peopleBox = database.getCollection(appfileConfig.collection);
+        peopleBox = database.getCollection(appfileConfig.box_collection);
         peopleBox.deleteOne(Filters.eq("ID", cloudId));
     }
 
@@ -174,6 +192,7 @@ public class MongoHandler {
             return "";
         };
     }
+
 
     private Function<Document, BBox> convertDocumentToBbox(){
         return document -> {
@@ -200,7 +219,6 @@ public class MongoHandler {
             double score = (double) document.get("score");
             return new Polygon( coordinates,level, score);
         };
-
     }
 
 
