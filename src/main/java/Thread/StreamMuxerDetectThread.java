@@ -8,6 +8,8 @@ import inference.GrpcService;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 import org.bytedeco.javacv.Frame;
 import utils.ConvertByteToUINT8Thread;
 
@@ -52,7 +54,12 @@ public class StreamMuxerDetectThread implements Runnable {
     private boolean isGetModelInfor;
     private GRPCInferenceServiceGrpc.GRPCInferenceServiceBlockingStub blockingStub = null;
     private List<Frame> lsitFrames = new ArrayList<>();
+<<<<<<< HEAD
 //    private Logger LOGGER = LogManager.getLogger(StreamMuxerDetectThread.class);
+=======
+    AppfileConfig appfileConfig;
+    private Logger LOGGER = LogManager.getLogger(StreamMuxerDetectThread.class);
+>>>>>>> d57d931e3614f2b4921328c83b51f293622201b7
 
     public StreamMuxerDetectThread(List<String> deviceIds, ConcurrentHashMap<String, AiService> allAIServiceMap) {
         this.deviceIds.addAll(deviceIds);
@@ -88,16 +95,24 @@ public class StreamMuxerDetectThread implements Runnable {
         GrpcService.ServerLiveRequest serverLiveRequest = GrpcService.ServerLiveRequest.getDefaultInstance();
         GrpcService.ServerLiveResponse serverLiveResponse = blockingStub.serverLive(serverLiveRequest);
         if (!serverLiveResponse.getLive()) {
+<<<<<<< HEAD
 //            LOGGER.error("Server is not live");
             System.out.println("Server is not live");
+=======
+            LOGGER.error("Server is not live");
+>>>>>>> d57d931e3614f2b4921328c83b51f293622201b7
             return false;
         }
         //check server ready status
         GrpcService.ServerReadyRequest serverReadyRequest = GrpcService.ServerReadyRequest.getDefaultInstance();
         GrpcService.ServerReadyResponse serverReadyResponse = blockingStub.serverReady(serverReadyRequest);
         if (!serverReadyResponse.getReady()) {
+<<<<<<< HEAD
 //            LOGGER.error("Server is not ready");
             System.out.println("Server is not ready");
+=======
+            LOGGER.error("Server is not ready");
+>>>>>>> d57d931e3614f2b4921328c83b51f293622201b7
             return false;
         }
         //check model ready status
@@ -106,8 +121,12 @@ public class StreamMuxerDetectThread implements Runnable {
         GrpcService.ModelReadyRequest modelReadyRequest = modelReadyBuilder.build();
         GrpcService.ModelReadyResponse modelReadyResponse = blockingStub.modelReady(modelReadyRequest);
         if (!modelReadyResponse.getReady()) {
+<<<<<<< HEAD
 //            LOGGER.error("Model is not ready");
             System.out.println("Model is not ready");
+=======
+            LOGGER.error("Model is not ready");
+>>>>>>> d57d931e3614f2b4921328c83b51f293622201b7
             return false;
         }
         //Get model info
@@ -121,8 +140,12 @@ public class StreamMuxerDetectThread implements Runnable {
                 GrpcService.ModelMetadataResponse modelMetadataResponse = blockingStub.modelMetadata(modelMetadataRequest);
 //                System.out.println(modelMetadataResponse.toString());
             } catch (Exception e) {
+<<<<<<< HEAD
 //                LOGGER.error("Wrong info");
                 System.out.println("Wrong info");
+=======
+                LOGGER.error("Wrong info");
+>>>>>>> d57d931e3614f2b4921328c83b51f293622201b7
                 return false;
             }
         }
@@ -134,8 +157,12 @@ public class StreamMuxerDetectThread implements Runnable {
         try {
             GrpcService.ModelConfigResponse modelConfigResponse = blockingStub.modelConfig(modelConfigRequest);
         } catch (Exception e) {
+<<<<<<< HEAD
 //            LOGGER.error("Wrong config");
             System.out.println("Wrong config");
+=======
+            LOGGER.error("Wrong config");
+>>>>>>> d57d931e3614f2b4921328c83b51f293622201b7
             return false;
         }
         return true;
@@ -344,7 +371,11 @@ public class StreamMuxerDetectThread implements Runnable {
 
                     return tritonPostResult.stream().map(e -> new PeopleBox(e.getDeviceId(), now, e.getListBBoxes())).collect(Collectors.toList());
                 } catch (Exception e) {
+<<<<<<< HEAD
 //                    LOGGER.error("Triton Server is not available ");
+=======
+                    LOGGER.error("Triton Server is not available ");
+>>>>>>> d57d931e3614f2b4921328c83b51f293622201b7
                     e.printStackTrace();
                     return null;
                 }
